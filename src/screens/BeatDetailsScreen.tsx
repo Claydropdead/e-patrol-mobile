@@ -250,8 +250,16 @@ export const BeatDetailsScreen: React.FC<BeatDetailsScreenProps> = ({ onBeatAcce
           <View style={styles.acceptedContainer}>
             <Text style={styles.acceptedText}>✅ Beat assignment accepted</Text>
             <Text style={styles.acceptedSubtext}>
-              Proceed to start location tracking
+              Ready to start location tracking
             </Text>
+            <TouchableOpacity
+              style={styles.proceedButton}
+              onPress={onBeatAccepted}
+            >
+              <Text style={styles.proceedButtonText}>
+                Start Location Tracking
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
       </ScrollView>
@@ -403,6 +411,20 @@ const styles = StyleSheet.create({
   acceptedSubtext: {
     fontSize: 14,
     color: '#047857',
+    marginBottom: 16,
+  },
+  proceedButton: {
+    backgroundColor: '#3b82f6',
+    paddingVertical: 14,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    alignItems: 'center',
+    width: '100%',
+  },
+  proceedButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
   },
   noBeatTitle: {
     fontSize: 24,

@@ -55,7 +55,7 @@ class LocationService {
       this.watchId = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.High,
-          timeInterval: 30000, // 30 seconds
+          timeInterval: 20000, // 20 seconds
           distanceInterval: 10, // 10 meters
         },
         (location) => {
@@ -91,39 +91,49 @@ class LocationService {
         return
       }
 
-      const locationData = {
-        personnel_id: user.id,
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        accuracy: location.coords.accuracy,
-        speed: location.coords.speed,
-        heading: location.coords.heading,
-        timestamp: new Date(location.timestamp).toISOString(),
-        created_at: new Date().toISOString()
-      }
+      console.log('📍 Sending GPS to personnel_locations table...')
+      console.log('User:', user.email)
+      console.log('Location:', location.coords.latitude, location.coords.longitude)
 
-      // Note: Since 'locations' table doesn't exist, we'll create it or store elsewhere
-      // For now, we'll just log the location data
-      console.log('Location update:', {
-        user: user.full_name,
-        lat: location.coords.latitude.toFixed(6),
-        lng: location.coords.longitude.toFixed(6),
-        time: new Date().toLocaleTimeString()
-      })
-
-      // Uncomment this when locations table is created:
-      /*
-      const { error } = await supabase
-        .from('locations')
-        .insert([locationData])
+      // Direct update to personnel_locations table
+      const { data, error } = await supabase
+        .from('personnel_locations')
+        .update({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          accuracy: location.coords.accuracy || 5,
+          updated_at: new Date().toISOString()
+        })
+        .eq('personnel_id', user.id)
+        .select()
 
       if (error) {
-        console.error('Failed to save location:', error.message)
+        console.error('❌ Database error:', error.message)
+        
+        // If no existing record, insert new one
+        console.log('🔄 Trying to insert new record...')
+        const { data: insertData, error: insertError } = await supabase
+          .from('personnel_locations')
+          .insert([{
+            personnel_id: user.id,
+            latitude: location.coords.latitude,
+            longitude: location.coords.longitude,
+            accuracy: location.coords.accuracy || 5,
+            updated_at: new Date().toISOString()
+          }])
+          .select()
+
+        if (insertError) {
+          console.error('❌ Insert failed:', insertError.message)
+        } else {
+          console.log('✅ New GPS record created:', insertData)
+        }
+      } else {
+        console.log('✅ GPS location updated successfully:', data)
       }
-      */
 
     } catch (error) {
-      console.error('Send location update error:', error)
+      console.error('❌ GPS update error:', error)
     }
   }
 
