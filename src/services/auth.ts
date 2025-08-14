@@ -5,11 +5,38 @@ import * as SecureStore from 'expo-secure-store'
 class AuthService {
   private authUser: AuthUser | null = null
 
+  // Test network connectivity to Supabase
+  async testConnection(): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { data, error } = await supabase.auth.getSession()
+      
+      if (error && error.message?.includes('fetch')) {
+        return { success: false, error: 'Network connection failed' }
+      }
+      
+      return { success: true }
+    } catch (error) {
+      if (error instanceof TypeError && error.message?.includes('fetch')) {
+        return { success: false, error: 'Network request failed. Please check your internet connection.' }
+      }
+      return { success: false, error: 'Connection test failed' }
+    }
+  }
+
   // Direct Supabase authentication
   async login(email: string, password: string): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
     try {
-      console.log('Attempting Supabase login for:', email)
-      
+      // Check network connectivity first
+      if (!process.env.EXPO_PUBLIC_SUPABASE_URL || !process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY) {
+        return { success: false, error: 'Supabase configuration missing' }
+      }
+
+      // Test connection first
+      const connectionTest = await this.testConnection()
+      if (!connectionTest.success) {
+        return { success: false, error: connectionTest.error || 'Network connection failed' }
+      }
+
       // Sign in with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email,
@@ -17,15 +44,17 @@ class AuthService {
       })
 
       if (authError) {
-        console.log('Supabase auth error:', authError.message)
+        // Check for network-related errors
+        if (authError.message?.includes('fetch') || authError.message?.includes('network')) {
+          return { success: false, error: 'Network connection failed. Please check your internet connection and try again.' }
+        }
+        
         return { success: false, error: authError.message }
       }
 
       if (!authData.user) {
         return { success: false, error: 'No user data returned' }
       }
-
-      console.log('Auth successful, fetching personnel data...')
 
       // Get personnel data from database
       const { data: personnelData, error: personnelError } = await supabase
@@ -35,7 +64,6 @@ class AuthService {
         .single()
 
       if (personnelError) {
-        console.log('Personnel fetch error:', personnelError.message)
         return { success: false, error: 'Personnel record not found' }
       }
 
@@ -55,11 +83,21 @@ class AuthService {
       await SecureStore.setItemAsync('userEmail', email)
       await SecureStore.setItemAsync('userId', authUser.id)
       
-      console.log('Login successful for:', authUser.full_name)
       return { success: true, user: authUser }
 
     } catch (error) {
-      console.error('Login error:', error)
+      // Handle network-specific errors
+      if (error instanceof TypeError && error.message?.includes('fetch')) {
+        return { success: false, error: 'Network request failed. Please check your internet connection.' }
+      }
+      
+      if (error instanceof Error) {
+        if (error.message?.includes('fetch') || error.message?.includes('network')) {
+          return { success: false, error: 'Network connection failed. Please check your internet connection and try again.' }
+        }
+        return { success: false, error: error.message }
+      }
+      
       return { success: false, error: 'An unexpected error occurred during login' }
     }
   }
@@ -115,14 +153,12 @@ class AuthService {
     try {
       // Check if environment variables are missing
       if (!process.env.EXPO_PUBLIC_SUPABASE_URL || !process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY) {
-        console.warn('Supabase environment variables not configured, returning false for logged in status')
         return false
       }
 
       const { data: { user } } = await supabase.auth.getUser()
       return user !== null
     } catch (error) {
-      console.error('Error checking login status:', error)
       return false
     }
   }
