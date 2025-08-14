@@ -112,8 +112,19 @@ class AuthService {
   }
 
   async isLoggedIn(): Promise<boolean> {
-    const { data: { user } } = await supabase.auth.getUser()
-    return user !== null
+    try {
+      // Check if environment variables are missing
+      if (!process.env.EXPO_PUBLIC_SUPABASE_URL || !process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY) {
+        console.warn('Supabase environment variables not configured, returning false for logged in status')
+        return false
+      }
+
+      const { data: { user } } = await supabase.auth.getUser()
+      return user !== null
+    } catch (error) {
+      console.error('Error checking login status:', error)
+      return false
+    }
   }
 
   getUser(): AuthUser | null {

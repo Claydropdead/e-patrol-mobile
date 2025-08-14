@@ -15,21 +15,26 @@ type RootStackParamList = {
 const Stack = createStackNavigator<RootStackParamList>()
 
 export default function App() {
+  console.log('App.tsx: App component starting...')
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [beatAccepted, setBeatAccepted] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
+    console.log('App.tsx: Starting auth check...')
     checkAuthStatus()
   }, [])
 
   const checkAuthStatus = async () => {
     try {
+      console.log('App.tsx: Calling authService.isLoggedIn()...')
       const loggedIn = await authService.isLoggedIn()
+      console.log('App.tsx: Auth check result:', loggedIn)
       setIsLoggedIn(loggedIn)
     } catch (error) {
-      console.error('Auth check error:', error)
+      console.error('App.tsx: Auth check error:', error)
     } finally {
+      console.log('App.tsx: Setting loading to false')
       setIsLoading(false)
     }
   }
